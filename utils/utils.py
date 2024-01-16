@@ -67,6 +67,8 @@ class Function(object):
         plt.title('Contour Plot')
         plt.xlabel('X-axis')
         plt.ylabel('Y-axis')
+        
+        plt.grid()
         plt.show()
 
 
@@ -188,23 +190,35 @@ class GradientDescent(object):
     def __init__(self, f) -> None:
         self.f = f
     def continue_condition(self, current_iteration, max_iteration, current_norm, epsilon, use_epsilon):
+        
+        
+            # if current_iteration >= max_iteration:
+            #     return False
+            # if use_epsilon:
+            #     return current_norm > epsilon
+            
+            # return True
+        if current_iteration >= max_iteration:
+            return False
         if use_epsilon:
             return current_norm > epsilon
-        else:
-            return current_iteration < max_iteration
+        return True
         # return the minimal point
 
     def update_x(self, current_x, current_gradient, alpha):
     # current_x and current_gradient have the same length
         # print('current x: {}'.format(current_x))
         # print('its type: {}'.format(type(current_x)))
+
+        # print(current_x)
+
         current_x = current_x.reshape(-1)
         current_gradient = current_gradient.reshape(-1)
         delta = alpha * current_gradient
         new_x = current_x - delta
         return new_x.reshape(-1), delta.reshape(-1)  
     
-    def solve(self, x0: np.array, max_iter=50, alpha=0.1, epsilon=0.01, use_epsilon=False):
+    def solve(self, x0: np.array, max_iter=50, alpha=0.01, epsilon=0.01, use_epsilon=False):
         x_history = []
         gradient_history = []
         value_history = []
@@ -294,15 +308,25 @@ class UzawaSolver(object):
         self.f = f
         self.constraints = constraints
 
+        self.f_increment_history = []
+        self.lagrangian_increment_history = []
+        self.x_increment_history = []
 
-    def solve_min(self, x0_internal, _lambda: np.array, tau=0.01, alpha=0.01, 
-                  max_iter=50, use_epsilon=False, epsilon=0.01, decay_type=None, decay_param=None):
+
+    def solve_min(self, x0_internal, _lambda: np.array, tau=0.01, alpha=0.01, max_iter_internal=50,
+                  max_iter=50, use_epsilon=False, epsilon=0.01, decay_type=None, decay_param=None,
+                   use_epsilon_internal=False, epsilon_internal=0.01, decay_type_internal=None, decay_param_internal=None):
         
         def continue_condition(current_iteration, max_iteration, current_norm, epsilon, use_epsilon):
+            # epsilon is enough condition
+            # check it first
+
+            if current_iteration >= max_iteration:
+                return False
             if use_epsilon:
                 return current_norm > epsilon
-            else:
-                return current_iteration < max_iteration
+            
+            return True
         
         # SOME DECLARATIONS FOR THE DECAY
         # the decay param is a numeric value that is greater than 0
@@ -349,6 +373,10 @@ class UzawaSolver(object):
         # increment history
         f_increment_history = []
         lagrangian_increment_history = []
+        
+        # todo here
+        # this will store the difference between two consecutive x's
+        x_increment_history = []
 
         # gradient_history = []
         lambda_history = []
@@ -360,6 +388,11 @@ class UzawaSolver(object):
         dim = x0_internal.shape[0]
         lagrangian_gradient_last = np.zeros(dim)
         f_gradient_last = np.zeros(dim)
+        x_last = np.array([np.inf for i in range(dim)])
+
+        # todo here
+        x_increment_last = np.array([np.inf for i in range(dim)])
+        # x_gradient_last = np.zeros(dim)
 
         
 
@@ -371,6 +404,7 @@ class UzawaSolver(object):
             # X solver for the current lambda
             # f + lambda * constraints
             lagrangian = self.f
+
             for i in range(len(_lambda)):
                 current_lambda = _lambda[i]
                 lagrangian += current_lambda * self.constraints[i]
@@ -378,7 +412,12 @@ class UzawaSolver(object):
 
             x_solver = GradientDescent(lagrangian)
             x_history_local, gradient_history_local, \
-            lr_history_local, value_history_local, last_iteration_local = x_solver.solve(x0=x0_internal)
+            lr_history_local, value_history_local, last_iteration_local = x_solver.solve(
+                x0=x0_internal, max_iter=max_iter_internal, alpha=alpha, use_epsilon=use_epsilon_internal,
+                epsilon=epsilon_internal
+                )
+            # print('done internal, found: {} in {} iterations'.format(x_history_local[-1], len(x_history_local)))
+            # decay_type=decay_type_internal, decay_param=decay_param_internal
             #         return np.array(x_history), np.array(gradient_history),
             #  np.array(lr_history), np.array(value_history), current_iteration        
 
@@ -390,10 +429,17 @@ class UzawaSolver(object):
             # last_x = x_history[-1]
             last_x = x_history_local[-1]
             
+
+            # x_increment_history.append(current_increment)
+            
+            # print('iteration: {}, last_x: {}'.format(current_iteration, last_x))
+            # print(last_x)
             # add the value of x and lambda to the history
             x_history.append(last_x)
             lambda_history.append(_lambda)
             
+            
+
             # track value and gradient of f
             f_value_history.append(self.f.__compute__(last_x))
             f_gradient_history.append(self.f.gradient(last_x))
@@ -402,12 +448,10 @@ class UzawaSolver(object):
             lagrangian_value_history.append(lagrangian.__compute__(last_x))
             lagrangian_gradient_history.append(lagrangian.__gradient__(last_x))
 
-            # compute the next value for lambda
-            for i in range(len(_lambda)):
-                _lambda[i] = max(0, _lambda[i] + tau * self.constraints[i].__compute__(last_x))
 
+            # update the value of the lambda
+            _lambda = np.vectorize(lambda lambda_i, con: max(0, lambda_i + tau * con.__compute__(last_x)))(_lambda, self.constraints) 
 
-            # save and update the tau 
             tau_history.append(tau)
             tau = update_tau(tau, current_iteration, 
                        decay_type=decay_type, decay_param=decay_param)
@@ -420,16 +464,21 @@ class UzawaSolver(object):
             # and then the increments
             f_increment = f_current_gradient - f_gradient_last
             lagrangian_increment = lagrangian_current_gradient - lagrangian_gradient_last
-            
+            x_increment = last_x - x_last
+
+            # update the last x to the current value so that we can compute it later
+            x_last = last_x
+
             f_increment_history.append(f_increment)
             lagrangian_increment_history.append(lagrangian_increment)    
-        
+            x_increment_history.append(x_increment)
+
             # update the last gradients
             lagrangian_gradient_last = lagrangian_current_gradient
             f_gradient_last = f_current_gradient
 
             can_continue = continue_condition(current_iteration, max_iter, # iteration logic
-                                            np.linalg.norm(f_increment), epsilon, # epsilon logic
+                                            np.linalg.norm(f_increment_history[-1]), epsilon, # epsilon logic
                                             use_epsilon=use_epsilon
                                             )
 
@@ -445,6 +494,7 @@ class UzawaSolver(object):
         self.lagrangian_increment_history = lagrangian_increment_history
 
         self.x_history = x_history
+        self.x_increment_history = x_increment_history
         self.lambda_history = lambda_history
         
         self.tau_history = tau_history
