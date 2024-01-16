@@ -398,16 +398,44 @@ class UzawaSolver(object):
                 return current_norm > epsilon
             
             return True
+
+        def recherche_lineaire(self, current_x, current_lambda):
+            gradient = np.array([self.constraints[i].__compute__(current_x) for i in range(len(self.constraints))])
+            
+            def phi(tau):
+                vs = current_lambda + tau * gradient
+                lagrangian = self.f
+                # creating Lagrangian(z, vs) 
+                for i in range(len(vs)):
+                    current_v = vs[i]
+                    lagrangian += current_v * self.constraints[i]
+                
+                x_solver = GradientDescent(lagrangian)
+                x_history_local, gradient_history_local, \
+                lr_history_local, value_history_local, last_iteration_local = x_solver.solve(
+                    x0=np.empty((len(current_x))), max_iter=500, alpha=0.008, use_epsilon=True,
+                    epsilon=0.1
+                    )
+                return lagrangian.__compute__(x_history_local[-1])
+            
+            r = 1
+            while not ( (phi(2*r) > phi(r)) and (phi(r) > phi(0)) ):
+                r = r / 2
+            tau = 2*r
+            while phi(tau+r) > phi(tau):
+                tau = tau + r
+            return tau
+            
         
         # SOME DECLARATIONS FOR THE DECAY
         # the decay param is a numeric value that is greater than 0
         # the decay type should be in ['linear', 'linear-param', 'quadratic', 'exponential']
         # if another value is specified out of this interval, we throw an error
 
-        DECAY_TYPES = ['linear', 'linear-param', 'quadratic', 'exponential']
+        DECAY_TYPES = ['linear', 'linear-param', 'quadratic', 'exponential', 'recherche-lineaire']
 
 
-        def update_tau(tau, current_iteration, decay_type, decay_param):
+        def update_tau(tau, current_iteration, decay_type, decay_param, current_x=None, current_lambda=None):
             if decay_type is None:
                 return tau 
             elif decay_type == 'linear':
@@ -418,6 +446,8 @@ class UzawaSolver(object):
                 return tau / (current_iteration + 1)**2
             elif decay_type == 'exponential':
                 return tau * np.exp(-decay_param * current_iteration)
+            elif decay_type == 'recherche-lineaire':
+                return recherche_lineaire(self, current_x, current_lambda)
         
         
         # check decay type, assert the values are allowed
@@ -427,8 +457,9 @@ class UzawaSolver(object):
                 raise ValueError('decay_type {} not valid, you should enter a type in : {}'.format(decay_type, DECAY_TYPES))
             
             # check for decay param validity as well
-            if decay_param <= 0:
-                raise ValueError('decay param should be > 0')
+            if decay_param != None:
+                if decay_param <= 0:
+                    raise ValueError('decay param should be > 0')
             
         
             
@@ -525,7 +556,7 @@ class UzawaSolver(object):
 
             tau_history.append(tau)
             tau = update_tau(tau, current_iteration, 
-                       decay_type=decay_type, decay_param=decay_param)
+                       decay_type=decay_type, decay_param=decay_param, current_x = x_history[-1], current_lambda=lambda_history[-1])
             
             # we compute the increments of f and the lagrangian
             # for that, we need the gradients
