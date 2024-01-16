@@ -146,7 +146,7 @@ class UzawaPlotter(object):
 
             # Plot dots
             plt.scatter([x[0] for x in x_history], [x[1] for x in x_history], marker='x', color='red', s=200)
-
+            plt.grid()
             # Add labels to each point
             for i, label in enumerate(labels):
                 plt.text(x_history[i][0] - 0.05, x_history[i][1] + 0.1, label, ha='right', va='bottom', fontsize=18)
@@ -163,28 +163,92 @@ class UzawaPlotter(object):
     # we should also make a global function that plots the changes in the lambdas
     # we should track the changes in the increments as well
 
+    
     def plot_lambda_history(self):
-        # consider here
         norms = [np.linalg.norm(x) for x in self.solver.lambda_history]
+        plt.figure(figsize=(15, 8))
         plt.stem(norms)
+        plt.title("Lambda History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Lambda")
+        plt.show()
 
     def plot_f_increments(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.f_increment_history]
+        plt.figure(figsize=(15, 8))
         plt.stem(norms)
+        plt.title("Function Increments History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Function Increments")
+        plt.show()
+
+    def plot_f_gradients(self, use_log=False):
+        func = lambda x: np.log(1+x) if use_log else x
+        norms = [func(np.linalg.norm(x)) for x in self.solver.f_gradient_history]
+        plt.figure(figsize=(15, 8))
+        plt.stem(norms)
+        plt.title("Function Gradients History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Function Gradients")
         plt.show()
     
     def plot_lagrangian_increments(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.lagrangian_increment_history]
+        plt.figure(figsize=(15, 8))
         plt.stem(norms)
+        plt.title("Lagrangian Increments History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Lagrangian Increments")
+        plt.show()
+
+    def plot_lagrangian_gradients(self, use_log=False):
+        func = lambda x: np.log(1+x) if use_log else x
+        norms = [func(np.linalg.norm(x)) for x in self.solver.lagrangian_gradient_history]
+        plt.figure(figsize=(15, 8))
+        plt.stem(norms)
+        plt.title("Lagrangian Gradients History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Lagrangian Gradients")
         plt.show()
 
     def plot_tau_history(self):
+        plt.figure(figsize=(15, 8))
         plt.stem(self.solver.tau_history)
+        plt.title("Tau History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Tau Value")
         plt.show()
-
     
+    def plot_x_increments(self, use_log=False):
+        func = lambda x: np.log(1+x) if use_log else x
+        norms = [func(np.linalg.norm(x)) for x in self.solver.x_increment_history]
+        plt.figure(figsize=(15, 8))
+        plt.stem(norms)
+        plt.title("X Increments History")
+        plt.xlabel("Iteration")
+        plt.ylabel("Norm of Variable Increments")
+        plt.show()
+    
+    def summary(self):
+        print('--------------------------------------------------------------------------------------')
+        # some information about the number of iteration
+        text = """
+            
+            Calculated Optiaml x: {}
+            iteration to convergence: {}
+
+""".format(self.solver.x_history[-1], self.solver.iters)
+        print(text)
+        print('--------------------------------------------------------------------------------------')
+        self.plot_lambda_history()
+        self.plot_f_increments(use_log=True)
+        self.plot_f_gradients()
+        self.plot_lagrangian_increments(use_log=True)
+        self.plot_lagrangian_gradients()
+        self.plot_tau_history()
+        self.plot_x_increments(use_log=True)
 class GradientDescent(object):
 
     def __init__(self, f) -> None:
