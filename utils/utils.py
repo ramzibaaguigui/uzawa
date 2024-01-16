@@ -81,6 +81,7 @@ class Function(object):
 
 class UzawaPlotter(object):
     def __init__(self, solver: "UzawaSolver"):
+        self.optimum = None
         self.solver = solver
 
     # overall, there are many vizualization choice that we shoule take into consideration
@@ -145,11 +146,16 @@ class UzawaPlotter(object):
             labels = [("x({})".format(str(i))) for i in range(len(x_history))]
 
             # Plot dots
-            plt.scatter([x[0] for x in x_history], [x[1] for x in x_history], marker='x', color='red', s=200)
+            plt.scatter([x[0] for x in x_history], [x[1] for x in x_history], marker='.', color='red', s=100)
+            plt.scatter(x_history[-1][0], x_history[-1][1], marker='x', color='red', s=100)
+            
+            self.optimum = self.solver.x_history[-1]
+
             plt.grid()
             # Add labels to each point
-            for i, label in enumerate(labels):
-                plt.text(x_history[i][0] - 0.05, x_history[i][1] + 0.1, label, ha='right', va='bottom', fontsize=18)
+            # for i, label in enumerate(labels):
+            plt.text(x_history[0][0] - 0.05, x_history[0][1] + 0.1, 'x(0)', ha='right', va='bottom', fontsize=18)
+            plt.text(x_history[-1][0] - 0.05, x_history[-1][1] + 0.1, 'x(n)', ha='right', va='bottom', fontsize=18)
 
             # plot the gradients
             # gradients = self.solver.gradient
@@ -166,7 +172,7 @@ class UzawaPlotter(object):
     
     def plot_lambda_history(self):
         norms = [np.linalg.norm(x) for x in self.solver.lambda_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("Lambda History")
         plt.xlabel("Iteration")
@@ -176,7 +182,7 @@ class UzawaPlotter(object):
     def plot_f_increments(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.f_increment_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("Function Increments History")
         plt.xlabel("Iteration")
@@ -186,7 +192,7 @@ class UzawaPlotter(object):
     def plot_f_gradients(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.f_gradient_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("Function Gradients History")
         plt.xlabel("Iteration")
@@ -196,7 +202,7 @@ class UzawaPlotter(object):
     def plot_lagrangian_increments(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.lagrangian_increment_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("Lagrangian Increments History")
         plt.xlabel("Iteration")
@@ -206,7 +212,7 @@ class UzawaPlotter(object):
     def plot_lagrangian_gradients(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.lagrangian_gradient_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("Lagrangian Gradients History")
         plt.xlabel("Iteration")
@@ -214,7 +220,7 @@ class UzawaPlotter(object):
         plt.show()
 
     def plot_tau_history(self):
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(self.solver.tau_history)
         plt.title("Tau History")
         plt.xlabel("Iteration")
@@ -224,7 +230,7 @@ class UzawaPlotter(object):
     def plot_x_increments(self, use_log=False):
         func = lambda x: np.log(1+x) if use_log else x
         norms = [func(np.linalg.norm(x)) for x in self.solver.x_increment_history]
-        plt.figure(figsize=(15, 8))
+        plt.figure(figsize=(12, 5))
         plt.stem(norms)
         plt.title("X Increments History")
         plt.xlabel("Iteration")
@@ -242,13 +248,14 @@ class UzawaPlotter(object):
 """.format(self.solver.x_history[-1], self.solver.iters)
         print(text)
         print('--------------------------------------------------------------------------------------')
-        self.plot_lambda_history()
-        self.plot_f_increments(use_log=True)
-        self.plot_f_gradients()
-        self.plot_lagrangian_increments(use_log=True)
-        self.plot_lagrangian_gradients()
-        self.plot_tau_history()
-        self.plot_x_increments(use_log=True)
+        # self.plot_lambda_history()
+        # self.plot_f_increments(use_log=True)
+        # self.plot_f_gradients()
+        # self.plot_lagrangian_increments(use_log=True)
+        # self.plot_lagrangian_gradients()
+        self.plot()
+        # self.plot_tau_history()
+        # self.plot_x_increments(use_log=True)
 class GradientDescent(object):
 
     def __init__(self, f) -> None:
